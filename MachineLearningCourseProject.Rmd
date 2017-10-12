@@ -1,0 +1,98 @@
+---
+title: "Machine Learning Course Project"
+author: "Nisha Shah"
+date: "October 11, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Synopsis
+
+The purpose of this project was to practice using machine learning algorithms in order to predict a specific variable.  The project looked at quantified self movement data collected by several devices included Jawbone Up, Nike FuelBand and Fitbit.  Specfically, the movement data was from individuals performing barbell lifts correctly and incorrectly in 5 different ways.  The goal here is to predict how well the individuals performed the lifts.  In order to perform the prediction, I evaluated the training.csv and testing.csv files.  Note that the testing.csv file will serve as our validation data set.  In order to perform cross-validation, I began by taking the training file and further partitioning it into a training and test data set.  I used the training data set to build both a classification tree-based model and a random forest model.  I used the models to predict the classe variable in the test data set.  The accuracy for the classification-tree based model was quite low, however, the accuracy for the random forest model was in excess of 99%, therefore, I utilized the random forest model against the data in the validation data set in order to predict how well the individuals performed the lifts.
+
+<br><br>
+
+#### Preparing the environment
+
+
+```{r, message=FALSE, warning=FALSE}
+library(caret)
+library(rattle)
+library(rpart)
+library(rpart.plot)
+library(randomForest)
+```
+
+<br>
+
+#### Read the files in
+```{r}
+## read the files and get rid of any "N/A" or "#DIV/0"
+
+train<-read.csv("pml-training.csv", na.strings=c("NA", "#DIV/0!", ""))
+validation<-read.csv("pml-testing.csv",na.strings=c("NA", "#DIV/0!", ""))
+```
+
+<br>
+
+#### Further clean the data to make it more manageable
+
+```{r}
+# get rid of first 7 columns since they have no predictive value
+
+train_a<-train[, -c(1:7)]
+validation_a<-validation[, -c(1:7)]
+
+# get rid of missing values
+
+training_data<-train_a[, colSums(is.na(train_a)) == 0]
+validation_data<-validation_a[, colSums(is.na(validation_a))==0]
+```
+
+<br>
+
+#### Break up the training.csv file into the training and testing data sets 
+```{r}
+inTrain<-createDataPartition(y=training_data$classe, p=0.7, list=FALSE)
+training<-training_data[inTrain,]
+testing<-training_data[-inTrain,]
+```
+
+<br>
+
+#### Create a model using classification trees to predict the "classe" variable
+```{r}
+set.seed(1001)
+modFit1 <- rpart(classe ~ ., data=training, method="class")
+predict_tree<-predict(modFit1, testing, type="class")
+cm_tree<-confusionMatrix(predict_tree, testing$classe)
+cm_tree
+```
+
+Notice that the accuracy of our prediction using classification trees is quite low.  The expected out of sample error here is .2277
+
+<br>
+
+#### Create a model using random forest to predict the "classe" variable
+```{r}
+set.seed(2003)
+modFit2<-randomForest(classe~., data=training)
+predict_rf<-predict(modFit2, testing, type="class")
+cm_rf<-confusionMatrix(predict_rf, testing$classe)
+cm_rf
+```
+Note that using the random forest algorithm, our accuracy is quite high.  The expected out of sample error here is .0056.  Given the low expected out of sample error, I will use the random forest algorithm against our validation data set.
+
+<br>
+
+#### Perform prediction on validation data set using random forest algorithm
+```{r}
+predict_validation<-predict(modFit2, validation_data, type="class")
+predict_validation
+```
+
+Above are the predictions for the 20 different test cases.
+
